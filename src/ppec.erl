@@ -16,11 +16,14 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 		 terminate/2, code_change/3]).
--export([set/6, get/4, do/6]).
+-export([set/3, get/1, do/3]).
+
 -define(SERVER, ?MODULE). 
 -define(VSN,  "62.0").
+-define(GBP, "GBP").
 
--record(state, {}).
+-import(ppec_util, [to_params/1, parse_result/1]).
+
 
 %%%===================================================================
 %%% API
@@ -36,7 +39,7 @@
 start_link() ->
 	ensure_started(inets),
 	ensure_started(ssl),
-	gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+	gen_server:start_link({local, ?SERVER}, ?MODULE, application:get_all_env(), []).
 
 
 %%--------------------------------------------------------------------
@@ -46,11 +49,10 @@ start_link() ->
 %% @spec set() -> 
 %% @end
 %%---------------------------------------------------------------------
-set(Uname, Pword, Sig, Amt, ReturnUrl, CancelUrl) ->
+set(Amt, ReturnUrl, CancelUrl) ->
 	Method = "SetExpressCheckout",
-	Auth = [{'USER', Uname}, {'PWD', Pword}, {'SIGNATURE', Sig}],
-	Params = [{'AMT', Amt}, {'RETURNURL', ReturnUrl}, {'CANCELURL', CancelUrl}, {'PAYMENTACTION', "Sale"}],
-	gen_server:call(?SERVER, {invoke, Method, Auth, Params}).
+	Params = [{'AMT', Amt}, {'RETURNURL', ReturnUrl}, {'CANCELURL', CancelUrl}, {'PAYMENTACTION', "Sale"}, {'CURRENCYCODE', ?GBP}],
+	gen_server:call(?SERVER, {invoke, Method, Params}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -59,11 +61,10 @@ set(Uname, Pword, Sig, Amt, ReturnUrl, CancelUrl) ->
 %% @spec get() -> 
 %% @end
 %%---------------------------------------------------------------------
-get(Uname, Pword, Sig, Token) ->
+get(Token) ->
 	Method = "GetExpressCheckoutDetails",
-	Auth = [{'USER', Uname}, {'PWD', Pword}, {'SIGNATURE', Sig}],
 	Params = [{'TOKEN', Token}],
-	gen_server:call(?SERVER, {invoke, Method, Auth, Params}).
+	gen_server:call(?SERVER, {invoke, Method, Params}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -72,11 +73,10 @@ get(Uname, Pword, Sig, Token) ->
 %% @spec do() -> 
 %% @end
 %%---------------------------------------------------------------------
-do(Uname, Pword, Sig, Token, PayerId, Amt) ->
+do(Token, PayerId, Amt) ->
 	Method = "DoExpressCheckoutPayment",
-	Auth = [{'USER', Uname}, {'PWD', Pword}, {'SIGNATURE', Sig}],
-	Params = [{'TOKEN', Token}, {'PAYMENTACTION', "Sale"}, {'PAYERID', PayerId}, {'AMT', Amt}],
-	gen_server:call(?SERVER, {invoke, Method, Auth, Params}).
+	Params = [{'TOKEN', Token}, {'PAYMENTACTION', "Sale"}, {'PAYERID', PayerId}, {'AMT', Amt}, {'CURRENCYCODE', ?GBP}],
+	gen_server:call(?SERVER, {invoke, Method, Params}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -93,8 +93,11 @@ do(Uname, Pword, Sig, Token, PayerId, Amt) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-	{ok, #state{}}.
+init(Args) ->
+	Uname = proplists:get_value(username, Args),
+	PWord = proplists:get_value(password, Args),
+	Sig = proplists:get_value(signature, Args),
+	{ok, [{'USER', Uname}, {'PWD', PWord}, {'SIGNATURE',  Sig}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,11 +113,12 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({invoke, Method, Auth, Params}, _From, State) ->
+handle_call({invoke, Method, Params}, _From, State) ->
 	Url = "https://api-3t.sandbox.paypal.com/nvp",
-	Body = make_post_body(Method, Auth, Params),
+	Body = make_post_body(Method, State, Params),
+	error_logger:info_msg("Sending ~p", [Body]),
 	{ok, {{_, 200, _}, _, Result}} = httpc:request(post, {Url, [], "application/x-www-form-urlencoded", Body}, [], [{sync, true}]),
-	Response = util:parse_result(Result),
+	Response = parse_result(Result),
 	Reply = case proplists:get_value("ACK", Response, "No ACK") of
 				"Success"++_ ->
 					{ok, Response};
@@ -181,8 +185,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 make_post_body(Method, Auth, Params) ->
-	tl(lists:flatten([util:params(Auth), util:params([{'VERSION', ?VSN}, {'METHOD', Method}]), util:params(Params)])).
-
+	tl(lists:flatten([to_params(Auth), to_params([{'VERSION', ?VSN}, {'METHOD', Method}]), to_params(Params)])).
 
 ensure_started(App) ->
     case application:start(App) of

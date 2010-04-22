@@ -6,7 +6,7 @@
              ppec_app,
              ppec_sup,
 	     ppec,
-             util
+             ppec_util
             ]},
   {registered, []},
   {applications, [
