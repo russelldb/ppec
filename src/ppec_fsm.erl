@@ -12,10 +12,10 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/0, set/4, get/1]).
+-export([start_link/0, set/4, get/1, do/2]).
 
 %% gen_fsm callbacks
--export([init/1, ready/2, ready/3, setted/2, setted/3, handle_event/3,
+-export([init/1, ready/2, ready/3, setted/2, setted/3, getted/2, getted/3, handle_event/3,
 		 handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
 -define(SERVER, ?MODULE).
@@ -148,7 +148,7 @@ setted({get}, _From, State) ->
 	case ppec:get(Token) of
 		{ok, Resp} ->
 			%% Check state of purchase
-			NewStatus = get_checkout_status(proplists:get_value(checkoutstatus, Resp));
+			NewState = get_checkout_status(proplists:get_value(checkoutstatus, Resp));
 		{error, Resp} ->
 			NewState = setted
 	end,
@@ -264,5 +264,5 @@ get_checkout_status("PaymentCompleted") ->
 
 get_paid_status("Completed") ->
 	done;
-get_checkout_status(_) ->
+get_paid_status(_) ->
 	getted.
