@@ -7,7 +7,7 @@
 %%% Created : 17 Apr 2010 by Russell Brown <russell@pango.lan>
 -module(ppec_util).
 
--export([percent_encode/1, url_decode/1, to_params/1, parse_result/1]).
+-export([percent_encode/1, url_decode/1, to_params/1, parse_result/1, atomise_keys/1]).
 
 -import(lists, [reverse/1, reverse/2, flatten/1]).
 
@@ -72,3 +72,6 @@ parse_val([$&|Rest], Lav) ->
 	{lists:reverse(Lav), Rest};
 parse_val([C|Rest], Acc) ->
 	parse_val(Rest, [C|Acc]).
+
+atomise_keys(PList) ->
+	[{list_to_atom(string:to_lower(Key)), Val} || {Key, Val} <- PList].

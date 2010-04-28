@@ -121,9 +121,9 @@ handle_call({invoke, Method, Params}, _From, State) ->
 	Response = parse_result(Result),
 	Reply = case proplists:get_value("ACK", Response, "No ACK") of
 				"Success"++_ ->
-					{ok, Response};
+					{ok, ppec_util:atomise_keys(Response)};
 				_ ->
-					{error, Response}
+					{error,  ppec_util:atomise_keys(Response)}
 			end,
 	{reply, Reply, State};
 handle_call(_Request, _From, State) ->

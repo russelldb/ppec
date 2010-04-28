@@ -147,8 +147,7 @@ setted({get}, _From, State) ->
 	Token = proplists:get_value(token, State#state.set_response),
 	case ppec:get(Token) of
 		{ok, Resp} ->
-			%% Check state of purchase
-			NewState = get_checkout_status(proplists:get_value(checkoutstatus, Resp));
+			NewState = paid_state(proplists:get_value(payerid, Resp, no_id));
 		{error, Resp} ->
 			NewState = setted
 	end,
@@ -159,7 +158,7 @@ setted(_Event, _From, State) ->
 
 getted({do, Amt}, _From, State) ->
 	Token = proplists:get_value(token, State#state.get_response),
-	PayerId = proplists:get_value(payerId, State#state.get_response),
+	PayerId = proplists:get_value(payerid, State#state.get_response),
 	case ppec:do(Token, PayerId, Amt) of
 		{ok, Resp} ->
 			NewStatus = get_paid_status(proplists:get_value(paymentstatus, Resp));
@@ -252,17 +251,12 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-get_checkout_status("PaymentActionNotInitiated") ->
-	setted;
-get_checkout_status("PaymentActionFailed") ->
-	failed;
-get_checkout_status("PaymentActionInProgress") ->
-	setted;
-get_checkout_status("PaymentCompleted") ->
-	getted.
-
-
 get_paid_status("Completed") ->
 	done;
 get_paid_status(_) ->
+	getted.
+
+paid_state(no_id) ->
+	setted;
+paid_state(L) when is_list(L) ->
 	getted.

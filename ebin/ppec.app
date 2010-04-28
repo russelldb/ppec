@@ -6,7 +6,8 @@
              ppec_app,
              ppec_sup,
 	     ppec,
-             ppec_util
+             ppec_util,
+	     ppec_fsm
             ]},
   {registered, []},
   {applications, [
