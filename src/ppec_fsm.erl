@@ -12,7 +12,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/0, set/4, get/1, do/2]).
+-export([start/0, set/4, get/1, do/2]).
 
 %% gen_fsm callbacks
 -export([init/1, ready/2, ready/3, setted/2, setted/3, getted/2, getted/3, handle_event/3,
@@ -35,8 +35,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-	gen_fsm:start_link(?MODULE, [], []).
+start() ->
+	gen_fsm:start(?MODULE, [], []).
 
 %%--------------------------------------------------------------------
 %% @doc
